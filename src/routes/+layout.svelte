@@ -162,6 +162,9 @@
 
 <svelte:head>
 	<meta name="theme-color" content="#f9f9f9" />
+	{#if site.googleSiteVerification}
+		<meta name="google-site-verification" content={site.googleSiteVerification} />
+	{/if}
 	{#each rssLinks as rssLink (rssLink.locale)}
 		<link rel="alternate" type="application/rss+xml" title={rssLink.title} href={rssLink.href} />
 	{/each}

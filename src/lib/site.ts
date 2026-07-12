@@ -83,6 +83,7 @@ const siteWithPublicEnv = {
 	author: preferPublicEnvKeys(['PUBLIC_SITE_AUTHOR', 'PUBLIC_SITE_OWNER'], site.author),
 	footer: preferPublicEnvKey('PUBLIC_SITE_FOOTER', site.footer),
 	url: preferPublicEnvKey('PUBLIC_SITE_URL', site.url),
+	googleSiteVerification: getPublicEnv('PUBLIC_GOOGLE_SITE_VERIFICATION'),
 	giscusRepo: preferPublicEnvKey('PUBLIC_GISCUS_REPO', site.giscusRepo),
 	giscusRepoId: preferPublicEnvKey('PUBLIC_GISCUS_REPO_ID', site.giscusRepoId),
 	giscusCategory: preferPublicEnvKey('PUBLIC_GISCUS_CATEGORY', site.giscusCategory),

@@ -74,6 +74,36 @@ tags: 'dev, git'
 
 프로젝트 Pages 저장소라면 빌드 시 `GITHUB_REPOSITORY` 값을 읽어 자동으로 base path를 맞춥니다. 사용자/조직 루트 Pages 저장소라면 base path는 빈 문자열로 유지됩니다.
 
+### Google Search 등록
+
+GitHub 프로젝트 Pages는 `https://<owner>.github.io/<repository>/` 하위 경로에 배포됩니다. 검색 로봇은 호스트 루트의 `https://<owner>.github.io/robots.txt`만 표준 robots 파일로 확인하므로, 이 저장소가 만드는 `/<repository>/robots.txt`의 사이트맵 선언만으로 검색엔진 발견을 보장할 수 없습니다. 프로젝트 Pages에서는 Google Search Console에 사이트맵을 직접 제출해야 합니다.
+
+1. Search Console에서 실제 배포 주소 전체를 URL-prefix 속성으로 추가합니다. 마지막 `/`도 포함합니다.
+
+   ```text
+   https://<owner>.github.io/<repository>/
+   ```
+
+2. Search Console이 발급한 HTML 태그의 `content` 값만 `.env.production`에 저장합니다.
+
+   ```sh
+   PUBLIC_GOOGLE_SITE_VERIFICATION=your-verification-token
+   ```
+
+   빌드하면 모든 페이지의 `<head>`에 다음 메타 태그가 생성됩니다.
+
+   ```html
+   <meta name="google-site-verification" content="your-verification-token" />
+   ```
+
+3. 배포 후 Search Console에서 소유권을 확인하고 다음 사이트맵을 제출합니다.
+
+   ```text
+   https://<owner>.github.io/<repository>/sitemap.xml
+   ```
+
+독립 도메인이나 `<owner>.github.io` 루트 사이트에 배포하면 생성된 `/robots.txt`가 호스트 루트에 위치하므로 그 안의 사이트맵 선언도 유효합니다. 인증 토큰은 공개 정보이며, Search Console 소유권 확인을 유지하려면 배포된 메타 태그를 제거하지 않습니다.
+
 로컬에서도 base path를 강제로 맞춰 보고 싶다면 아래처럼 빌드할 수 있습니다.
 
 ```sh
@@ -108,6 +138,7 @@ PUBLIC_SITE_DESCRIPTION="A static blog built with SvelteKit."
 PUBLIC_SITE_OWNER="Your Name"
 PUBLIC_SITE_FOOTER="Built with SvelteKit."
 PUBLIC_SITE_URL=https://example.com
+PUBLIC_GOOGLE_SITE_VERIFICATION=your-verification-token
 PUBLIC_SOCIAL_X_URL=https://x.com/your-handle
 PUBLIC_SOCIAL_GITHUB_URL=https://github.com/your-name
 ```
