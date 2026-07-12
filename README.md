@@ -8,7 +8,7 @@ SvelteKit 기반 정적 블로그 템플릿입니다. `@sveltejs/adapter-static`
 - GitHub Pages deployment via `.github/workflows/deploy.yml`
 - Pages CMS via root `.pages.yml`
 - Markdown posts in `src/content/posts`
-- DeepL translation sync into `src/content/translations/<locale>/posts`
+- DeepL translation sync into `src/content/translations/<locale>`
 
 ## Local development
 
@@ -27,7 +27,7 @@ bun run preview
 등록된 번역 언어 파일까지 로컬에서 갱신하려면 DeepL API 키를 넣고 아래 명령을 실행합니다.
 
 ```sh
-DEEPL_API_KEY=your-key bun run translate:posts
+DEEPL_API_KEY=your-key bun run translate:content
 ```
 
 ## Content structure
@@ -35,6 +35,7 @@ DEEPL_API_KEY=your-key bun run translate:posts
 - `.env.production`: 배포 시 사용하는 공개 사이트 설정
 - `src/content/site.json`: env가 비어 있을 때 쓰는 사이트 메타 fallback
 - `src/content/posts/*.md`: frontmatter + Markdown 본문
+- `src/content/translations/<locale>/site.json`: DeepL이 생성하는 언어별 사이트 문구
 - `src/content/translations/<locale>/posts/*.md`: DeepL이 생성하고 커밋하는 언어별 번역본
 - `static/uploads`: CMS 업로드 이미지
 
@@ -143,27 +144,21 @@ PUBLIC_SOCIAL_X_URL=https://x.com/your-handle
 PUBLIC_SOCIAL_GITHUB_URL=https://github.com/your-name
 ```
 
-언어별 메타 문구를 따로 두고 싶으면 locale suffix를 붙입니다. 하이픈이 있는 locale은 `_`로 바꿉니다.
-
-```sh
-PUBLIC_SITE_DESCRIPTION_EN="A static blog built with SvelteKit."
-PUBLIC_SITE_TAGLINE_EN="Notes and essays"
-PUBLIC_SITE_FOOTER_EN="Built with SvelteKit."
-PUBLIC_SITE_DESCRIPTION_JA="SvelteKitで構築した静的ブログです。"
-```
+`PUBLIC_SITE_TAGLINE`, `PUBLIC_SITE_DESCRIPTION`, `PUBLIC_SITE_FOOTER`는 원문 값만 둡니다. 배포할 때 `PUBLIC_TRANSLATION_LOCALES`에 등록된 언어별 문구가 `src/content/translations/<locale>/site.json`으로 자동 생성됩니다. locale suffix가 붙은 `PUBLIC_SITE_DESCRIPTION_EN` 같은 환경변수는 사용하지 않습니다.
 
 `PUBLIC_SITE_AUTHOR`도 같은 값으로 인식됩니다. 둘 다 있으면 `PUBLIC_SITE_AUTHOR`가 우선합니다.
 
 ## Translation workflow
 
 1. Pages CMS에서 원문을 `src/content/posts/*.md`에 저장합니다.
-2. GitHub Actions가 `bun run translate:posts`를 실행합니다.
+2. GitHub Actions가 `bun run translate:content`를 실행합니다.
 3. `.env.production`의 `PUBLIC_TRANSLATION_LOCALES`에 등록된 각 언어별로 번역본이 없거나 원문 해시가 바뀌었거나 번역 스키마 버전이 달라진 경우에만 DeepL을 호출합니다.
-4. 본문 Markdown은 구조화 XML로 변환해 `tag_handling=xml`, `tag_handling_version=v2`, `ignore_tags` 기반으로 번역하므로 헤딩, 리스트, 코드블록 보존이 더 안정적입니다.
-5. frontmatter `date`는 DeepL에 보내지지 않고 원문 값을 그대로 복사하므로 게시 시각까지 유지됩니다.
-6. DeepL 요청에는 마크다운 구조와 frontmatter 의미를 보존하라는 custom instruction도 포함됩니다.
-7. 생성된 번역 파일은 `src/content/translations/<locale>/posts/*.md`에 커밋됩니다.
-8. 같은 워크플로에서 정적 빌드와 Pagefind 인덱싱이 이어서 실행됩니다.
+4. 사이트 문구인 `PUBLIC_SITE_TAGLINE`, `PUBLIC_SITE_DESCRIPTION`, `PUBLIC_SITE_FOOTER`도 같은 방식으로 번역되어 `src/content/translations/<locale>/site.json`에 저장됩니다. 문구마다 원문 언어가 다를 수 있으므로 사이트 문구는 DeepL의 언어 자동 감지를 사용합니다.
+5. 본문 Markdown은 구조화 XML로 변환해 `tag_handling=xml`, `tag_handling_version=v2`, `ignore_tags` 기반으로 번역하므로 헤딩, 리스트, 코드블록 보존이 더 안정적입니다.
+6. frontmatter `date`는 DeepL에 보내지지 않고 원문 값을 그대로 복사하므로 게시 시각까지 유지됩니다.
+7. DeepL 요청에는 마크다운 구조와 frontmatter 의미를 보존하라는 custom instruction도 포함됩니다.
+8. 생성된 번역 파일은 `src/content/translations/<locale>` 아래에 커밋됩니다.
+9. 같은 워크플로에서 정적 빌드와 Pagefind 인덱싱이 이어서 실행됩니다.
 
 번역 언어는 공개 env로 관리합니다. 아래 예시는 한국어 원문을 영어, 중국어 간체, 일본어, 아랍어로 번역합니다.
 

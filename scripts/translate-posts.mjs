@@ -8,6 +8,7 @@ import matter from 'gray-matter';
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, '..');
 const sourceDir = path.join(projectRoot, 'src/content/posts');
+const sourceSiteFile = path.join(projectRoot, 'src/content/site.json');
 
 const loadEnvFile = (filePath) => {
 	if (!existsSync(filePath)) {
@@ -41,6 +42,20 @@ const loadEnvFile = (filePath) => {
 };
 
 loadEnvFile(path.join(projectRoot, '.env.production'));
+
+const fallbackSite = JSON.parse(readFileSync(sourceSiteFile, 'utf8'));
+
+const getSiteCopyValue = (envKey, fallbackKey) => {
+	const value = process.env[envKey]?.trim() ?? '';
+
+	return value === '' ? String(fallbackSite[fallbackKey] ?? '').trim() : value;
+};
+
+const sourceSiteCopy = {
+	tagline: getSiteCopyValue('PUBLIC_SITE_TAGLINE', 'tagline'),
+	description: getSiteCopyValue('PUBLIC_SITE_DESCRIPTION', 'description'),
+	footer: getSiteCopyValue('PUBLIC_SITE_FOOTER', 'footer')
+};
 
 const normalizeLocale = (value, fallback = 'en') => {
 	const normalized = value?.trim().replaceAll('_', '-').toLowerCase() ?? '';
@@ -152,6 +167,7 @@ const defaultApiUrl = (() => {
 const translateEndpoint = `${defaultApiUrl}/v2/translate`;
 const translationChunkLimit = 20_000;
 const translationSchemaVersion = 'markdown-xml-v2';
+const siteTranslationSchemaVersion = 'site-copy-v1';
 const plainTextCustomInstructions = [
 	'Use natural grammar, punctuation, and capitalization for the target language.',
 	'Preserve the authorial tone while making titles, descriptions, and paragraph openings read naturally.'
@@ -282,6 +298,32 @@ const inferTranslationState = async (targetFile) => {
 	try {
 		const raw = await readFile(targetFile, 'utf8');
 		const { data } = matter(raw);
+		return {
+			exists: true,
+			sourceHash: typeof data.sourceHash === 'string' ? data.sourceHash : null,
+			locale: typeof data.locale === 'string' ? normalizeLocale(data.locale) : null,
+			schemaVersion:
+				typeof data.translationSchemaVersion === 'string' ? data.translationSchemaVersion : null
+		};
+	} catch (error) {
+		if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+			return {
+				exists: false,
+				sourceHash: null,
+				locale: null,
+				schemaVersion: null
+			};
+		}
+
+		throw error;
+	}
+};
+
+const inferSiteTranslationState = async (targetFile) => {
+	try {
+		const raw = await readFile(targetFile, 'utf8');
+		const data = JSON.parse(raw);
+
 		return {
 			exists: true,
 			sourceHash: typeof data.sourceHash === 'string' ? data.sourceHash : null,
@@ -858,6 +900,36 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash, targetLocale, la
 	return matter.stringify(translatedBody, nextData);
 };
 
+const translateSiteCopy = async (targetLocale, targetLang, sourceHash) => {
+	const fields = ['tagline', 'description', 'footer'];
+	const translatedValues = await translateTexts(
+		fields.map((field) => sourceSiteCopy[field]),
+		{ targetLang }
+	);
+
+	if (translatedValues.length !== fields.length) {
+		throw new Error(`DeepL returned incomplete site copy for ${targetLocale}`);
+	}
+
+	const translatedCopy = Object.fromEntries(
+		fields.map((field, index) => [field, translatedValues[index]])
+	);
+
+	return `${JSON.stringify(
+		{
+			...translatedCopy,
+			locale: targetLocale,
+			sourceHash,
+			sourceLocale,
+			translationSchemaVersion: siteTranslationSchemaVersion,
+			translationSource: 'deepl',
+			translatedAt: new Date().toISOString()
+		},
+		null,
+		2
+	)}\n`;
+};
+
 const sourceFiles = await listMarkdownFiles(sourceDir);
 const sourceByName = new Map(sourceFiles.map((file) => [path.basename(file), file]));
 
@@ -867,13 +939,38 @@ if (targetLocales.length === 0) {
 }
 
 const sourceLang = getDeepLLanguageCode(sourceLocale, 'DEEPL_SOURCE_LANG');
-const pending = [];
+const sourceSiteHash = hashContent(JSON.stringify(sourceSiteCopy));
+const pendingPosts = [];
+const pendingSiteCopies = [];
 let removedCount = 0;
 let skippedCount = 0;
+let skippedSiteCount = 0;
 
 for (const targetLocale of targetLocales) {
 	const targetDir = path.join(projectRoot, 'src/content/translations', targetLocale, 'posts');
 	await mkdir(targetDir, { recursive: true });
+	const siteTargetFile = path.join(
+		projectRoot,
+		'src/content/translations',
+		targetLocale,
+		'site.json'
+	);
+	const siteTargetState = await inferSiteTranslationState(siteTargetFile);
+	const isSiteTranslationCurrent =
+		siteTargetState.sourceHash === sourceSiteHash &&
+		siteTargetState.locale === targetLocale &&
+		(apiKey === '' || siteTargetState.schemaVersion === siteTranslationSchemaVersion);
+
+	if (isSiteTranslationCurrent) {
+		skippedSiteCount += 1;
+	} else {
+		pendingSiteCopies.push({
+			targetFile: siteTargetFile,
+			targetLocale,
+			targetLang: getDeepLLanguageCode(targetLocale, 'DEEPL_TARGET_LANG'),
+			needsUpdate: siteTargetState.exists
+		});
+	}
 
 	const targetFiles = await listMarkdownFiles(targetDir);
 	for (const targetFile of targetFiles) {
@@ -903,7 +1000,7 @@ for (const targetLocale of targetLocales) {
 			continue;
 		}
 
-		pending.push({
+		pendingPosts.push({
 			sourceFile,
 			sourceRaw,
 			sourceHash,
@@ -918,14 +1015,30 @@ for (const targetLocale of targetLocales) {
 	}
 }
 
-if (pending.length > 0 && apiKey === '') {
+if ((pendingPosts.length > 0 || pendingSiteCopies.length > 0) && apiKey === '') {
 	throw new Error(
-		`DEEPL_API_KEY is missing. Add the repository secret before deploying new or changed ${sourceLocale} posts.`
+		`DEEPL_API_KEY is missing. Add the repository secret before deploying new or changed ${sourceLocale} content.`
+	);
+}
+
+let translatedSiteCount = 0;
+for (const job of pendingSiteCopies) {
+	const translatedSiteCopy = await translateSiteCopy(
+		job.targetLocale,
+		job.targetLang,
+		sourceSiteHash
+	);
+	await writeFile(job.targetFile, translatedSiteCopy, 'utf8');
+	translatedSiteCount += 1;
+	console.log(
+		`${job.needsUpdate ? 'Updated' : 'Created'} ${job.targetLocale} site copy: ${toPosixPath(
+			path.relative(projectRoot, job.targetFile)
+		)}`
 	);
 }
 
 let translatedCount = 0;
-for (const job of pending) {
+for (const job of pendingPosts) {
 	const translatedPost = await translatePost(
 		job.sourceFile,
 		job.sourceRaw,
@@ -943,5 +1056,5 @@ for (const job of pending) {
 }
 
 console.log(
-	`DeepL sync complete. locales=${targetLocales.join(',')} created_or_updated=${translatedCount} skipped=${skippedCount} removed=${removedCount}`
+	`DeepL sync complete. locales=${targetLocales.join(',')} site_created_or_updated=${translatedSiteCount} site_skipped=${skippedSiteCount} posts_created_or_updated=${translatedCount} posts_skipped=${skippedCount} posts_removed=${removedCount}`
 );

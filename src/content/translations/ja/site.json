@@ -1,0 +1,11 @@
+{
+  "tagline": "製品ノートや実験に関する静的公開",
+  "description": "SvelteKit、GitHub Pages、およびPages CMSで構築された静的ブログです。記事はMarkdownで管理し、デプロイはGitHub Actionsが行います。",
+  "footer": "SvelteKit、GitHub Pages、およびPages CMSを使用して構築されています。",
+  "locale": "ja",
+  "sourceHash": "8e43ef56460d7d667f9a3c07a8d50a6b86a71c0a37b23bdcda643d5e3eaa2017",
+  "sourceLocale": "ko",
+  "translationSchemaVersion": "site-copy-v1",
+  "translationSource": "deepl",
+  "translatedAt": "2026-07-12T08:40:13.447Z"
+}

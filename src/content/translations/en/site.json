@@ -1,0 +1,11 @@
+{
+  "tagline": "Static publishing for product notes and experiments",
+  "description": "This is a static blog built using SvelteKit, GitHub Pages, and Pages CMS. Posts are managed in Markdown, and deployment is handled by GitHub Actions.",
+  "footer": "Built with SvelteKit, GitHub Pages, and Pages CMS.",
+  "locale": "en",
+  "sourceHash": "8e43ef56460d7d667f9a3c07a8d50a6b86a71c0a37b23bdcda643d5e3eaa2017",
+  "sourceLocale": "ko",
+  "translationSchemaVersion": "site-copy-v1",
+  "translationSource": "deepl",
+  "translatedAt": "2026-07-12T08:40:12.717Z"
+}

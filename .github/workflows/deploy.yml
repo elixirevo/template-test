@@ -73,13 +73,13 @@ jobs:
 
           echo "use_translations=$value" >> "$GITHUB_OUTPUT"
 
-      - name: Translate posts
-        run: bun run translate:posts
+      - name: Translate content
+        run: bun run translate:content
         env:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           DEEPL_API_URL: ${{ secrets.DEEPL_API_URL }}
 
-      - name: Commit translated posts
+      - name: Commit translated content
         run: |
           if [ -z "$(git status --porcelain -- src/content/translations)" ]; then
             echo "No translated content changes to commit"

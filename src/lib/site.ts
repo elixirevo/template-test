@@ -31,28 +31,6 @@ const preferPublicEnvKeys = (keys: PublicEnvKey[], fallback: string) => {
 	return fallback;
 };
 
-const toEnvLocaleSuffix = (locale: Locale) =>
-	normalizeLocale(locale, '').replaceAll('-', '_').toUpperCase();
-
-const getLocalizedPublicEnv = (key: PublicEnvKey, locale: Locale) => {
-	const normalizedLocale = normalizeLocale(locale, sourceLocale);
-	const baseLocale = normalizedLocale.split('-')[0] ?? normalizedLocale;
-	const localizedKeys = [
-		`${key}_${toEnvLocaleSuffix(normalizedLocale)}`,
-		`${key}_${toEnvLocaleSuffix(baseLocale)}`
-	] as PublicEnvKey[];
-
-	for (const localizedKey of localizedKeys) {
-		const value = getPublicEnv(localizedKey);
-
-		if (value !== '') {
-			return value;
-		}
-	}
-
-	return getPublicEnv(key);
-};
-
 const createSocialLink = (
 	labelKey: PublicEnvKey,
 	urlKey: PublicEnvKey,
@@ -96,6 +74,42 @@ const sourceSiteCopy = {
 	footer: siteWithPublicEnv.footer
 };
 
+type LocalizedSiteCopy = typeof sourceSiteCopy;
+
+const localizedSiteCopyFiles = import.meta.glob('/src/content/translations/*/site.json', {
+	eager: true,
+	import: 'default',
+	query: '?raw'
+}) as Record<string, string>;
+
+const localizedSiteCopies = new Map<Locale, LocalizedSiteCopy>();
+
+for (const [filePath, raw] of Object.entries(localizedSiteCopyFiles)) {
+	const localeMatch = filePath.match(/\/src\/content\/translations\/([^/]+)\/site\.json$/);
+	if (!localeMatch) {
+		continue;
+	}
+
+	try {
+		const parsed = JSON.parse(raw) as Record<string, unknown>;
+		if (
+			typeof parsed.description !== 'string' ||
+			typeof parsed.tagline !== 'string' ||
+			typeof parsed.footer !== 'string'
+		) {
+			continue;
+		}
+
+		localizedSiteCopies.set(normalizeLocale(localeMatch[1], ''), {
+			description: parsed.description,
+			tagline: parsed.tagline,
+			footer: parsed.footer
+		});
+	} catch {
+		// Ignore incomplete generated files and use the source copy until the next translation sync.
+	}
+}
+
 export type SiteConfig = typeof siteWithPublicEnv & {
 	locale: Locale;
 	socialLinks: SocialLink[];
@@ -103,19 +117,11 @@ export type SiteConfig = typeof siteWithPublicEnv & {
 
 export const getSiteConfig = (locale: Locale): SiteConfig => {
 	const normalizedLocale = normalizeLocale(locale, sourceLocale);
+	const translatedCopy = localizedSiteCopies.get(normalizedLocale);
 	const localizedCopy = {
-		description: preferPublicEnv(
-			getLocalizedPublicEnv('PUBLIC_SITE_DESCRIPTION', normalizedLocale),
-			sourceSiteCopy.description
-		),
-		tagline: preferPublicEnv(
-			getLocalizedPublicEnv('PUBLIC_SITE_TAGLINE', normalizedLocale),
-			sourceSiteCopy.tagline
-		),
-		footer: preferPublicEnv(
-			getLocalizedPublicEnv('PUBLIC_SITE_FOOTER', normalizedLocale),
-			sourceSiteCopy.footer
-		)
+		description: preferPublicEnv(translatedCopy?.description, sourceSiteCopy.description),
+		tagline: preferPublicEnv(translatedCopy?.tagline, sourceSiteCopy.tagline),
+		footer: preferPublicEnv(translatedCopy?.footer, sourceSiteCopy.footer)
 	};
 
 	return {
