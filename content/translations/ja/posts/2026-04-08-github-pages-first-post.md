@@ -1,4 +1,5 @@
 ---
+id: 27e3c838-dc14-4518-abda-98781f72a546
 title: GitHub PagesにデプロイするSvelteKitブログ
 description: adapter-staticとprerenderの設定を用いて、SvelteKitをGitHub Pagesに公開するための基本構成をまとめます。
 date: '2026-04-08'

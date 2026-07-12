@@ -1,4 +1,5 @@
 ---
+id: 27e3c838-dc14-4518-abda-98781f72a546
 title: A SvelteKit blog deployed to GitHub Pages
 description: >-
   Here is an overview of the basic structure for deploying SvelteKit to GitHub

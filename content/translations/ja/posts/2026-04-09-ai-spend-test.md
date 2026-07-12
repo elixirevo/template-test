@@ -1,4 +1,5 @@
 ---
+id: 6b7958a2-6dc4-49f2-b10b-afae1a1c1c78
 title: AI支出管理コーチングサービスの企画書
 description: AI支出管理コーチングサービスの企画書
 date: '2026-04-09'

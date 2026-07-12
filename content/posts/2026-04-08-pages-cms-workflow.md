@@ -1,4 +1,5 @@
 ---
+id: eb19e667-4448-427e-81b0-c6bbe8faadc6
 title: Pages CMS로 정적 콘텐츠 워크플로우 설계하기
 description: Git 저장소를 그대로 CMS처럼 사용하면서 사이트 설정과 글을 함께 관리하는 운영 흐름을 소개합니다.
 date: 2026-04-07

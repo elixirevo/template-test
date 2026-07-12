@@ -1,4 +1,5 @@
 ---
+id: 6b7958a2-6dc4-49f2-b10b-afae1a1c1c78
 title: AI 지출 코치 서비스 기획서
 description: AI 지출 코치 서비스 기획서
 date: 2026-04-09

@@ -49,9 +49,11 @@ Create posts as `.md` files under `content/posts`. The filename without `.md` be
 
 ````markdown
 ---
+id: 2f4ad174-baba-4aa4-89ad-72760aeb2509
 title: Deploying a SvelteKit blog
 description: A practical guide to deploying a static SvelteKit blog to GitHub Pages.
 date: 2026-07-12T18:00:00
+updated: 2026-07-13T09:30:00
 published: true
 category: Technical
 tags:
@@ -75,9 +77,11 @@ Frontmatter fields follow these rules:
 
 | Field         | Required | Format and behavior                                                                        |
 | ------------- | -------- | ------------------------------------------------------------------------------------------ |
+| `id`          | Required | Immutable UUID or ULID. Generate missing IDs with `bun run posts:ids`; never reuse one.    |
 | `title`       | Required | Used on list/detail pages and in SEO metadata.                                             |
 | `description` | Required | Used as the post excerpt and SEO description.                                              |
 | `date`        | Required | Use `YYYY-MM-DD` or an ISO datetime. Controls publication date and sorting.                |
+| `updated`     | Optional | ISO date or datetime for meaningful post revisions. Included in the Hub feed when present. |
 | `published`   | Optional | Defaults to `true`. Set to `false` to exclude the post from the build.                     |
 | `category`    | Optional | Defaults to `Notes`. Register it in `content/categories` before selecting it in Pages CMS. |
 | `tags`        | Optional | A string array is recommended. Register values in `content/tags` for Pages CMS.            |
@@ -98,6 +102,15 @@ A comma-separated string is also accepted:
 tags: 'dev, git'
 ```
 
+`id` belongs to the source post and must survive filename/slug changes. Translations always copy the source ID; do not assign translation IDs independently. Safely backfill IDs and validate all variants with:
+
+```sh
+bun run posts:ids
+bun run posts:ids:check
+```
+
+The backfill command is idempotent. It adds missing source IDs, copies them to translations, removes orphan generated translations, and refuses to overwrite invalid, duplicate, or mismatched existing IDs. Translation sync and GitHub Actions run it before translating; the workflow persists newly generated IDs.
+
 Do not add `locale`, `sourcePath`, `sourceHash`, `translationSchemaVersion`, `translationSource`, or `translatedAt` to source posts. The translation script generates these fields. Update `content/translations` with `bun run translate:content` instead of editing generated files manually.
 
 ## Search
@@ -106,6 +119,31 @@ Do not add `locale`, `sourcePath`, `sourceHash`, `translationSchemaVersion`, `tr
 - `/<locale>/search`: search in each configured translation locale
 - Pagefind indexes post titles, descriptions, and bodies.
 - Category, tag, and locale values are exposed as Pagefind filters.
+
+## Blog Hub participation
+
+The static build publishes a discovery manifest at `/.well-known/blog-hub.json` (under the GitHub Pages project base path when one is configured). Participation is enabled by default. Set the following public deployment values in `.env.production`:
+
+```sh
+PUBLIC_HUB_ENABLED=true
+PUBLIC_HUB_URL=https://hub.example.com
+PUBLIC_HUB_REPOSITORY=owner/repository
+```
+
+- Set `PUBLIC_HUB_ENABLED=false` (also accepts `0`, `no`, or `off`) to opt out. The manifest remains discoverable with `enabled: false`, and workflows stop sending hints.
+- `PUBLIC_HUB_REPOSITORY` is the local-build fallback. GitHub Actions uses the trustworthy `GITHUB_REPOSITORY` context instead, so forks do not inherit the upstream repository identity.
+- `PUBLIC_HUB_URL` is the Hub origin used for optional deployment and discussion-comment hints. Leave it empty to rely only on periodic Hub discovery and feed polling.
+- Hint requests contain GitHub identifiers only. The Hub must fetch and verify the public manifest, feed, Discussion, and comment itself.
+- Hint delivery has a 10-second timeout and never fails a successful Pages deployment or comment workflow.
+
+The schema-version 1 manifest includes `repository`, `siteUrl`, `sourceLocale`, and an absolute RSS URL for every configured locale. RSS remains valid RSS 2.0 and adds the `https://gitblog.dev/ns/hub/1.0` namespace:
+
+- `<guid isPermaLink="false">` and `<hub:postId>` contain the immutable source post ID.
+- `<hub:locale>` identifies the variant while `<hub:sourceLocale>` identifies the source language. Variants share the same post ID.
+- `<hub:giscusTerm>` is derived from the immutable ID, so renaming a Markdown file does not split its discussion identity.
+- `<hub:cover>` is an absolute URL when a cover exists, and `<hub:updated>` is emitted when `updated` is present.
+
+After a successful Pages deployment, `deploy.yml` sends `POST /v1/ingestion/deploy-hint`. `.github/workflows/hub-discussion-comment.yml` sends created/deleted `discussion_comment` events to `POST /v1/events/comment-hint`. Existing slug-based Giscus discussions are updated in place to the ID-based term during discussion sync, preserving their comments rather than creating replacement discussions.
 
 ## GitHub Pages setup
 

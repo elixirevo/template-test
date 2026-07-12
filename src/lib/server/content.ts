@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import matter from 'gray-matter';
 import hljs from 'highlight.js';
 import { marked, type Tokens } from 'marked';
@@ -10,6 +9,7 @@ import {
 	type Locale
 } from '$lib/locales';
 import { getSiteConfig } from '$lib/site';
+import { createGiscusTerm, isPostId } from '$lib/server/post-identity';
 
 const escapeHtml = (value: string) =>
 	value
@@ -63,9 +63,11 @@ const translatedPostFiles = import.meta.glob('/content/translations/*/posts/*.md
 }) as Record<string, string>;
 
 type Frontmatter = {
+	id?: string;
 	title?: string;
 	description?: string;
 	date?: string | Date;
+	updated?: string | Date;
 	published?: boolean;
 	category?: string;
 	tags?: string[] | string;
@@ -73,11 +75,14 @@ type Frontmatter = {
 };
 
 type ParsedPost = {
+	id: string;
 	locale: Locale;
+	sourceLocale: Locale;
 	slug: string;
 	title: string;
 	description: string;
 	date: string;
+	updated: string | null;
 	published: boolean;
 	formattedDate: string;
 	readingTime: string;
@@ -91,12 +96,9 @@ type ParsedPost = {
 };
 
 export type BlogPost = Omit<ParsedPost, 'published' | 'timestamp'>;
-export type PostSummary = Omit<ParsedPost, 'giscusTerm' | 'html' | 'published' | 'timestamp'>;
+export type PostSummary = Omit<ParsedPost, 'html' | 'published' | 'timestamp'>;
 
 const toSlug = (path: string) => path.split('/').at(-1)?.replace(/\.md$/, '') ?? path;
-
-const createGiscusTerm = (slug: string) =>
-	`giscus-post-${createHash('sha256').update(slug).digest('hex').slice(0, 16)}`;
 
 const getTranslationLocaleFromPath = (path: string): Locale | null => {
 	const match = path.match(/\/content\/translations\/([^/]+)\/posts\//);
@@ -192,13 +194,30 @@ const formatDate = (locale: Locale, timestamp: number) =>
 		day: 'numeric'
 	}).format(new Date(timestamp));
 
-const parsePost = (path: string, source: string, locale: Locale): ParsedPost => {
+const parsePost = (
+	path: string,
+	source: string,
+	locale: Locale,
+	expectedPostId?: string
+): ParsedPost => {
 	const slug = toSlug(path);
 	const { content, data } = matter(source);
 	const frontmatter = data as Frontmatter;
 
 	if (!frontmatter.title || !frontmatter.description || !frontmatter.date) {
 		throw new Error(`Missing required frontmatter in ${path}`);
+	}
+
+	const id = frontmatter.id?.trim() ?? '';
+
+	if (!isPostId(id)) {
+		throw new Error(`Missing or invalid immutable post id in ${path}`);
+	}
+
+	if (expectedPostId && id !== expectedPostId) {
+		throw new Error(
+			`Translated post ${path} changed immutable source post id ${expectedPostId} to ${id}`
+		);
 	}
 
 	const date =
@@ -209,12 +228,26 @@ const parsePost = (path: string, source: string, locale: Locale): ParsedPost => 
 		throw new Error(`Invalid date in ${path}: ${date}`);
 	}
 
+	const updated =
+		frontmatter.updated instanceof Date
+			? frontmatter.updated.toISOString()
+			: frontmatter.updated
+				? String(frontmatter.updated)
+				: null;
+
+	if (updated && Number.isNaN(Date.parse(updated))) {
+		throw new Error(`Invalid updated date in ${path}: ${updated}`);
+	}
+
 	return {
+		id,
 		locale,
+		sourceLocale,
 		slug,
 		title: frontmatter.title,
 		description: frontmatter.description,
 		date,
+		updated,
 		published: frontmatter.published !== false,
 		formattedDate: formatDate(locale, timestamp),
 		readingTime: estimateReadingTime(content),
@@ -222,7 +255,7 @@ const parsePost = (path: string, source: string, locale: Locale): ParsedPost => 
 		tags: normalizeTags(frontmatter.tags),
 		cover: normalizeCover(frontmatter.cover),
 		excerpt: createExcerpt(frontmatter.description, content),
-		giscusTerm: createGiscusTerm(slug),
+		giscusTerm: createGiscusTerm(id),
 		html: marked.parse(content) as string,
 		timestamp
 	};
@@ -234,13 +267,23 @@ const comparePostsByPublishTime = (left: ParsedPost, right: ParsedPost) =>
 	right.slug.localeCompare(left.slug);
 
 const postsByLocale = new Map<Locale, ParsedPost[]>();
+const sourcePosts = Object.entries(sourcePostFiles).map(([path, source]) =>
+	parsePost(path, source, sourceLocale)
+);
+const sourcePostsBySlug = new Map(sourcePosts.map((post) => [post.slug, post]));
+const sourcePostIds = new Set<string>();
+
+for (const post of sourcePosts) {
+	if (sourcePostIds.has(post.id)) {
+		throw new Error(`Duplicate immutable post id ${post.id}`);
+	}
+
+	sourcePostIds.add(post.id);
+}
 
 postsByLocale.set(
 	sourceLocale,
-	Object.entries(sourcePostFiles)
-		.map(([path, source]) => parsePost(path, source, sourceLocale))
-		.filter(({ published }) => published)
-		.sort(comparePostsByPublishTime)
+	sourcePosts.filter(({ published }) => published).sort(comparePostsByPublishTime)
 );
 
 for (const [path, source] of Object.entries(translatedPostFiles)) {
@@ -250,8 +293,15 @@ for (const [path, source] of Object.entries(translatedPostFiles)) {
 		continue;
 	}
 
+	const slug = toSlug(path);
+	const sourcePost = sourcePostsBySlug.get(slug);
+
+	if (!sourcePost) {
+		throw new Error(`Translated post ${path} does not have a matching source post`);
+	}
+
 	const posts = postsByLocale.get(locale) ?? [];
-	posts.push(parsePost(path, source, locale));
+	posts.push(parsePost(path, source, locale, sourcePost.id));
 	postsByLocale.set(locale, posts);
 }
 
@@ -263,22 +313,25 @@ for (const [locale, posts] of postsByLocale) {
 }
 
 const toSummary = (post: ParsedPost): PostSummary => ({
+	id: post.id,
 	locale: post.locale,
+	sourceLocale: post.sourceLocale,
 	slug: post.slug,
 	title: post.title,
 	description: post.description,
 	date: post.date,
+	updated: post.updated,
 	formattedDate: post.formattedDate,
 	readingTime: post.readingTime,
 	category: post.category,
 	tags: post.tags,
 	cover: post.cover,
-	excerpt: post.excerpt
+	excerpt: post.excerpt,
+	giscusTerm: post.giscusTerm
 });
 
 const toBlogPost = (post: ParsedPost): BlogPost => ({
 	...toSummary(post),
-	giscusTerm: post.giscusTerm,
 	html: post.html
 });
 

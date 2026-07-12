@@ -181,6 +181,9 @@ const structuredMarkdownInstructions = [
 
 const hashContent = (value) => createHash('sha256').update(value).digest('hex');
 
+// Identity metadata must not trigger paid retranslation of otherwise unchanged copy.
+const withoutPostId = (source) => source.replace(/^((?:\uFEFF)?---\r?\n)id:\s*[^\r\n]+\r?\n/, '$1');
+
 const formatFrontmatterDate = (value) => {
 	if (typeof value === 'string') {
 		return value.trim();
@@ -844,11 +847,12 @@ const translateTexts = async (texts, options = {}) => {
 
 const translatePost = async (sourceFile, sourceRaw, sourceHash, targetLocale, languageCodes) => {
 	const { data, content } = matter(sourceRaw);
+	const id = typeof data.id === 'string' ? data.id.trim() : '';
 	const title = typeof data.title === 'string' ? data.title.trim() : '';
 	const description = typeof data.description === 'string' ? data.description.trim() : '';
 	const date = extractRawFrontmatterField(sourceRaw, 'date') ?? formatFrontmatterDate(data.date);
 
-	if (title === '' || description === '' || date === '') {
+	if (id === '' || title === '' || description === '' || date === '') {
 		throw new Error(
 			`Missing required frontmatter in ${toPosixPath(path.relative(projectRoot, sourceFile))}`
 		);
@@ -877,6 +881,7 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash, targetLocale, la
 		.join('\n\n');
 
 	const nextData = {
+		id,
 		title: translatedMeta[0],
 		description: translatedMeta[1],
 		date,
@@ -895,6 +900,12 @@ const translatePost = async (sourceFile, sourceRaw, sourceHash, targetLocale, la
 
 	if (typeof data.cover === 'string' && data.cover.trim() !== '') {
 		nextData.cover = data.cover;
+	}
+
+	const updated =
+		extractRawFrontmatterField(sourceRaw, 'updated') ?? formatFrontmatterDate(data.updated);
+	if (updated !== '') {
+		nextData.updated = updated;
 	}
 
 	return matter.stringify(translatedBody, nextData);
@@ -982,7 +993,7 @@ for (const targetLocale of targetLocales) {
 
 	for (const sourceFile of sourceFiles) {
 		const sourceRaw = await readFile(sourceFile, 'utf8');
-		const sourceHash = hashContent(sourceRaw);
+		const sourceHash = hashContent(withoutPostId(sourceRaw));
 		const targetFile = path.join(targetDir, path.basename(sourceFile));
 		const targetState = await inferTranslationState(targetFile);
 		const isTranslationCurrent =

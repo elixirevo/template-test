@@ -6,9 +6,11 @@ import { fileURLToPath } from 'node:url';
 import matter from 'gray-matter';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(scriptDir, '..');
+const projectRoot = process.env.GISCUS_SYNC_ROOT
+	? path.resolve(process.env.GISCUS_SYNC_ROOT)
+	: path.resolve(scriptDir, '..');
 const sourceDir = path.join(projectRoot, 'content/posts');
-const githubApiUrl = 'https://api.github.com/graphql';
+const githubApiUrl = process.env.GITHUB_GRAPHQL_URL?.trim() || 'https://api.github.com/graphql';
 
 const loadEnvFile = (filePath) => {
 	if (!existsSync(filePath)) {
@@ -151,9 +153,22 @@ const buildPostPath = (locale, slug) => {
 const createGiscusTerm = (slug) =>
 	`giscus-post-${createHash('sha256').update(slug).digest('hex').slice(0, 16)}`;
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ulidPattern = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+const isPostId = (value) =>
+	typeof value === 'string' && (uuidPattern.test(value.trim()) || ulidPattern.test(value.trim()));
+
 const readPostMetadata = async (filePath, slug, locale) => {
 	const raw = await readFile(filePath, 'utf8');
 	const { data } = matter(raw);
+	const id = typeof data.id === 'string' ? data.id.trim() : '';
+
+	if (!isPostId(id)) {
+		throw new Error(
+			`Missing or invalid immutable post id in ${path.relative(projectRoot, filePath)}`
+		);
+	}
+
 	const title = typeof data.title === 'string' && data.title.trim() !== '' ? data.title : slug;
 	const description =
 		typeof data.description === 'string' && data.description.trim() !== ''
@@ -162,6 +177,7 @@ const readPostMetadata = async (filePath, slug, locale) => {
 
 	return {
 		description,
+		id,
 		locale,
 		slug,
 		title
@@ -208,6 +224,12 @@ const readDiscussionPosts = async () => {
 		const sourcePost = await readPostMetadata(filePath, slug, sourceLocale);
 		const englishPost = await readEnglishTranslation(slug);
 
+		if (englishPost && englishPost.id !== sourcePost.id) {
+			throw new Error(
+				`Translated post ${slug} changed immutable source post id ${sourcePost.id} to ${englishPost.id}`
+			);
+		}
+
 		posts.push({
 			...(englishPost ?? sourcePost),
 			sourceLocale,
@@ -218,17 +240,27 @@ const readDiscussionPosts = async () => {
 	return posts;
 };
 
-const getTerm = (post) => createGiscusTerm(post.sourceSlug);
+const getTerm = (post) => createGiscusTerm(post.id);
+const getLegacyTerms = (post) => [createGiscusTerm(post.sourceSlug), `post:${post.sourceSlug}`];
 const getDiscussionTitle = (post) => `${post.title} [${getTerm(post)}]`;
-const termPattern = /(giscus-post-[a-f0-9]{16}|post:\S+)/;
+const termPattern = /giscus-post-[a-f0-9]{16}/;
 
-const extractTitleTerm = (discussion) => discussion.title.match(termPattern)?.[1] ?? null;
-const extractBodyTerm = (discussion) =>
-	discussion.bodyText?.match(/giscus term:\s*(\S+)/)?.[1] ?? null;
+const extractTitleTerm = (discussion) => {
+	const title = discussion.title.trim();
+	return title.startsWith('post:') ? title : (title.match(termPattern)?.[0] ?? null);
+};
+
+const extractBodyTerm = (discussion) => {
+	const termLine = discussion.bodyText
+		?.split(/\r?\n/)
+		.find((line) => line.trim().startsWith('giscus term:'));
+
+	return termLine?.replace(/^.*?giscus term:\s*/, '').trim() || null;
+};
 
 const fetchExistingDiscussionTerms = async () => {
-	const linkedTerms = new Set();
-	const bodyOnlyTerms = new Set();
+	const linkedTerms = new Map();
+	const bodyOnlyTerms = new Map();
 	let cursor = null;
 
 	do {
@@ -242,7 +274,9 @@ const fetchExistingDiscussionTerms = async () => {
 							orderBy: { field: CREATED_AT, direction: DESC }
 						) {
 							nodes {
+								id
 								title
+								body
 								bodyText
 							}
 							pageInfo {
@@ -265,14 +299,24 @@ const fetchExistingDiscussionTerms = async () => {
 			const titleTerm = extractTitleTerm(discussion);
 
 			if (titleTerm) {
-				linkedTerms.add(titleTerm);
+				const duplicate = linkedTerms.get(titleTerm);
+				if (duplicate && duplicate.id !== discussion.id) {
+					throw new Error(`Multiple giscus discussions use title term ${titleTerm}`);
+				}
+
+				linkedTerms.set(titleTerm, discussion);
 				continue;
 			}
 
 			const bodyTerm = extractBodyTerm(discussion);
 
 			if (bodyTerm) {
-				bodyOnlyTerms.add(bodyTerm);
+				const duplicate = bodyOnlyTerms.get(bodyTerm);
+				if (duplicate && duplicate.id !== discussion.id) {
+					throw new Error(`Multiple giscus discussions use body term ${bodyTerm}`);
+				}
+
+				bodyOnlyTerms.set(bodyTerm, discussion);
 			}
 		}
 
@@ -330,33 +374,103 @@ const createDiscussion = async (post) => {
 	);
 };
 
+const migrateDiscussionTerm = async (post, discussion, previousTerm) => {
+	const term = getTerm(post);
+	const title = extractTitleTerm(discussion)
+		? discussion.title.replaceAll(previousTerm, term)
+		: getDiscussionTitle(post);
+	const migratedBody =
+		typeof discussion.body === 'string' && discussion.body !== ''
+			? discussion.body.replaceAll(previousTerm, term)
+			: buildDiscussionBody(post);
+	const body = migratedBody.includes(term)
+		? migratedBody
+		: `${migratedBody.trimEnd()}\n\ngiscus term: ${term}`;
+
+	await graphql(
+		`
+			mutation MigrateGiscusDiscussionTerm($discussionId: ID!, $title: String!, $body: String!) {
+				updateDiscussion(input: { discussionId: $discussionId, title: $title, body: $body }) {
+					discussion {
+						id
+					}
+				}
+			}
+		`,
+		{
+			body,
+			discussionId: discussion.id,
+			title
+		}
+	);
+};
+
 const posts = await readDiscussionPosts();
 const { bodyOnlyTerms, linkedTerms } = await fetchExistingDiscussionTerms();
 let createdCount = 0;
+let migratedCount = 0;
 let skippedCount = 0;
 let unlinkedCount = 0;
 
 for (const post of posts) {
 	const term = getTerm(post);
+	const legacyTerms = getLegacyTerms(post);
+	const currentDiscussion = linkedTerms.get(term);
+	const currentBodyOnlyDiscussion = bodyOnlyTerms.get(term);
+	const legacyDiscussionEntry = legacyTerms
+		.map((legacyTerm) => [legacyTerm, linkedTerms.get(legacyTerm)])
+		.find(([, discussion]) => discussion);
+	const legacyBodyOnlyEntry = legacyTerms
+		.map((legacyTerm) => [legacyTerm, bodyOnlyTerms.get(legacyTerm)])
+		.find(([, discussion]) => discussion);
+	const legacyDiscussion = legacyDiscussionEntry?.[1];
+	const legacyBodyOnlyDiscussion = legacyBodyOnlyEntry?.[1];
+	const discussionIds = new Set(
+		[currentDiscussion, legacyDiscussion, currentBodyOnlyDiscussion, legacyBodyOnlyDiscussion]
+			.filter(Boolean)
+			.map((discussion) => discussion.id)
+	);
 
-	if (linkedTerms.has(term)) {
+	if (discussionIds.size > 1) {
+		throw new Error(
+			`Multiple current or legacy giscus discussions exist for ${post.sourceSlug}; merge them before continuing`
+		);
+	}
+
+	if (currentDiscussion) {
 		skippedCount += 1;
 		continue;
 	}
 
-	if (bodyOnlyTerms.has(term)) {
+	if (legacyDiscussion) {
+		const legacyTerm = legacyDiscussionEntry[0];
+		await migrateDiscussionTerm(post, legacyDiscussion, legacyTerm);
+		linkedTerms.delete(legacyTerm);
+		linkedTerms.set(term, legacyDiscussion);
+		migratedCount += 1;
+		console.log(`Migrated giscus discussion: ${legacyTerm} -> ${term} (${post.locale})`);
+		continue;
+	}
+
+	const bodyOnlyTerm = currentBodyOnlyDiscussion ? term : legacyBodyOnlyEntry?.[0];
+	const bodyOnlyDiscussion = currentBodyOnlyDiscussion ?? legacyBodyOnlyDiscussion;
+
+	if (bodyOnlyDiscussion && bodyOnlyTerm) {
 		unlinkedCount += 1;
-		console.warn(
-			`Found unlinked body-only giscus discussion for ${term}; creating a replacement with the term in the title.`
-		);
+		await migrateDiscussionTerm(post, bodyOnlyDiscussion, bodyOnlyTerm);
+		bodyOnlyTerms.delete(bodyOnlyTerm);
+		linkedTerms.set(term, bodyOnlyDiscussion);
+		migratedCount += 1;
+		console.log(`Linked existing giscus discussion: ${bodyOnlyTerm} -> ${term} (${post.locale})`);
+		continue;
 	}
 
 	await createDiscussion(post);
-	linkedTerms.add(term);
+	linkedTerms.set(term, { id: term });
 	createdCount += 1;
 	console.log(`Created giscus discussion: ${term} (${post.locale})`);
 }
 
 console.log(
-	`Giscus discussion sync complete. created=${createdCount} skipped=${skippedCount} unlinked=${unlinkedCount} total=${posts.length}`
+	`Giscus discussion sync complete. created=${createdCount} migrated=${migratedCount} skipped=${skippedCount} unlinked=${unlinkedCount} total=${posts.length}`
 );

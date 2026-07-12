@@ -34,6 +34,13 @@ content:
           time: true
           format: "yyyy-MM-dd'T'HH:mm:ss"
           step: 1
+      - name: updated
+        label: Updated date
+        type: date
+        options:
+          time: true
+          format: "yyyy-MM-dd'T'HH:mm:ss"
+          step: 1
       - name: published
         label: Published
         type: boolean

@@ -1,4 +1,5 @@
 ---
+id: eb19e667-4448-427e-81b0-c6bbe8faadc6
 title: Designing a Static Content Workflow with Pages CMS
 description: >-
   Here’s a workflow that lets you use your Git repository as a CMS to manage

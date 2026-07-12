@@ -1,4 +1,5 @@
 ---
+id: 27e3c838-dc14-4518-abda-98781f72a546
 title: GitHub Pages에 배포하는 SvelteKit 블로그
 description: adapter-static과 prerender 설정으로 SvelteKit을 GitHub Pages에 올리는 기본 구조를 정리합니다.
 date: 2026-04-08

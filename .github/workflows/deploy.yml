@@ -24,6 +24,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.deployment-commit.outputs.sha }}
 
     steps:
       - name: Checkout
@@ -41,6 +43,22 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Ensure immutable post IDs
+        run: bun run posts:ids
+
+      - name: Persist immutable post IDs
+        run: |
+          if [ -z "$(git status --porcelain -- content/posts content/translations)" ]; then
+            echo "No post IDs to commit"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/posts content/translations
+          git commit -m "chore(content): add immutable post IDs [skip ci]"
+          git push origin HEAD:${GITHUB_REF_NAME}
 
       - name: Detect changed source posts
         id: changed-posts
@@ -115,6 +133,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_USE_TRANSLATIONS: ${{ steps.release-settings.outputs.use_translations }}
 
+      - name: Record deployed commit
+        id: deployment-commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
@@ -131,3 +153,13 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Checkout hint sender
+        continue-on-error: true
+        uses: actions/checkout@v4
+
+      - name: Notify Blog Hub of successful deploy
+        continue-on-error: true
+        run: node ./scripts/send-hub-hint.mjs deploy
+        env:
+          DEPLOYED_COMMIT_SHA: ${{ needs.build.outputs.commit_sha }}
