@@ -12,12 +12,12 @@ Pages CMS는 별도 데이터베이스 없이 **GitHub 저장소의 파일을 �
 
 ## 1. 포스트 컬렉션
 
-`src/content/posts` 폴더를 컬렉션으로 등록해 새 글을 만들고 기존 글을 수정할 수 있습니다.  
+`content/posts` 폴더를 컬렉션으로 등록해 새 글을 만들고 기존 글을 수정할 수 있습니다.
 `title`, `description`, `date`, `cover`, `body` 같은 필드를 UI에서 다루고, 저장하면 실제 Markdown 파일이 커밋됩니다.
 
 ## 2. 사이트 설정 파일
 
-`src/content/site.json`을 별도 파일 편집기로 연결해 블로그 이름, 설명, URL 같은 메타 정보를 CMS에서 수정할 수 있습니다.
+`content/site.json`을 별도 파일 편집기로 연결해 블로그 이름, 설명, URL 같은 메타 정보를 CMS에서 수정할 수 있습니다.
 
 ## 이미지 업로드
 

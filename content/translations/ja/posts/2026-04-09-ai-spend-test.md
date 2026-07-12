@@ -5,7 +5,7 @@ date: '2026-04-09'
 published: true
 category: Technical
 locale: ja
-sourcePath: src/content/posts/2026-04-09-ai-spend-test.md
+sourcePath: content/posts/2026-04-09-ai-spend-test.md
 sourceHash: b9155838ca8c982b261ab13b2a50767f542f23f852f3da2605e1a8918498c517
 sourceLocale: ko
 translationSchemaVersion: markdown-xml-v2
@@ -107,4 +107,3 @@ export async function POST({ request }) {
   return json(user, { status: 201 });
 }
 ```
-

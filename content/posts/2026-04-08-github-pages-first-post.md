@@ -26,7 +26,7 @@ GitHub Pages에서는 `/blog/post/`처럼 디렉터리 기반 URL이 다루기 �
 
 ## 콘텐츠는 어디에 있나
 
-포스트는 `src/content/posts`에 Markdown 파일로 저장됩니다.  
+포스트는 `content/posts`에 Markdown 파일로 저장됩니다.
 각 파일은 frontmatter와 본문으로 구성되고, 빌드 시 목록 페이지와 상세 페이지가 생성됩니다.
 
 ## 다음 단계

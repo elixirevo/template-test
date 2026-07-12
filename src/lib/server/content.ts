@@ -50,13 +50,13 @@ marked.use({
 	}
 });
 
-const sourcePostFiles = import.meta.glob('/src/content/posts/*.md', {
+const sourcePostFiles = import.meta.glob('/content/posts/*.md', {
 	eager: true,
 	import: 'default',
 	query: '?raw'
 }) as Record<string, string>;
 
-const translatedPostFiles = import.meta.glob('/src/content/translations/*/posts/*.md', {
+const translatedPostFiles = import.meta.glob('/content/translations/*/posts/*.md', {
 	eager: true,
 	import: 'default',
 	query: '?raw'
@@ -99,7 +99,7 @@ const createGiscusTerm = (slug: string) =>
 	`giscus-post-${createHash('sha256').update(slug).digest('hex').slice(0, 16)}`;
 
 const getTranslationLocaleFromPath = (path: string): Locale | null => {
-	const match = path.match(/\/src\/content\/translations\/([^/]+)\/posts\//);
+	const match = path.match(/\/content\/translations\/([^/]+)\/posts\//);
 
 	if (!match) {
 		return null;

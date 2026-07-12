@@ -7,8 +7,8 @@ SvelteKit 기반 정적 블로그 템플릿입니다. `@sveltejs/adapter-static`
 - SvelteKit + `@sveltejs/adapter-static`
 - GitHub Pages deployment via `.github/workflows/deploy.yml`
 - Pages CMS via root `.pages.yml`
-- Markdown posts in `src/content/posts`
-- DeepL translation sync into `src/content/translations/<locale>`
+- Markdown posts in `content/posts`
+- DeepL translation sync into `content/translations/<locale>`
 
 ## Local development
 
@@ -33,11 +33,13 @@ DEEPL_API_KEY=your-key bun run translate:content
 ## Content structure
 
 - `.env.production`: 배포 시 사용하는 공개 사이트 설정
-- `src/content/site.json`: env가 비어 있을 때 쓰는 사이트 메타 fallback
-- `src/content/posts/*.md`: frontmatter + Markdown 본문
-- `src/content/translations/<locale>/site.json`: DeepL이 생성하는 언어별 사이트 문구
-- `src/content/translations/<locale>/posts/*.md`: DeepL이 생성하고 커밋하는 언어별 번역본
+- `content/site.json`: env가 비어 있을 때 쓰는 사이트 메타 fallback
+- `content/posts/*.md`: frontmatter + Markdown 본문
+- `content/translations/<locale>/site.json`: DeepL이 생성하는 언어별 사이트 문구
+- `content/translations/<locale>/posts/*.md`: DeepL이 생성하고 커밋하는 언어별 번역본
 - `static/uploads`: CMS 업로드 이미지
+
+`content`, `.env.production`, `static/uploads`는 블로그별 사용자 데이터 영역입니다. 템플릿 애플리케이션 코드는 `src`에 두어 원본 저장소의 코드 변경을 병합할 때 사용자 콘텐츠와 충돌하는 범위를 줄입니다.
 
 포스트 frontmatter에는 카테고리와 별도로 여러 태그를 둘 수 있습니다. 태그는 `#` 없이 저장하고 화면에도 `dev`처럼 표시됩니다.
 
@@ -111,6 +113,60 @@ GitHub 프로젝트 Pages는 `https://<owner>.github.io/<repository>/` 하위 �
 SITE_BASE_PATH=blog bun run build
 ```
 
+## Updating from the upstream template
+
+원본 템플릿의 변경을 계속 받아야 한다면 GitHub의 **Fork**로 블로그 저장소를 만드는 방식을 권장합니다. Fork는 원본 저장소와 관계가 유지되므로 GitHub의 `Sync fork` 기능이나 Git 명령으로 업데이트할 수 있습니다. `Use this template`로 만든 저장소는 독립된 Git 이력을 가지므로 자동 동기화 대상이 아닙니다.
+
+업데이트하기 전에 블로그 저장소의 작업을 먼저 커밋하고 작업 트리가 깨끗한지 확인합니다. `content`, `.env.production`, `static/uploads`는 블로그별 사용자 데이터이므로 충돌 해결 과정에서 원본 템플릿 값으로 덮어쓰지 않도록 주의합니다.
+
+### Fork에서 업데이트하기
+
+처음 한 번 원본 저장소를 `upstream`으로 등록합니다.
+
+```sh
+git remote add upstream https://github.com/ORIGINAL_OWNER/ORIGINAL_REPOSITORY.git
+git remote -v
+```
+
+이후 원본 `main` 브랜치의 변경을 가져와 현재 블로그에 병합합니다.
+
+```sh
+git fetch upstream
+git switch main
+git merge upstream/main
+bun install --frozen-lockfile
+bun run check
+bun run build
+git push origin main
+```
+
+GitHub 저장소 화면의 `Sync fork` → `Update branch`도 사용할 수 있지만, 충돌이 예상되면 로컬에서 병합하는 편이 변경 내용을 확인하기 쉽습니다.
+
+병합 충돌이 발생하면 `git status`에 표시된 파일을 직접 수정한 후 해결한 파일만 지정하여 커밋합니다.
+
+```sh
+git status
+git add path/to/resolved-file
+git commit
+```
+
+병합을 취소하고 시작 전 상태로 돌아가려면 커밋 전에 `git merge --abort`를 실행합니다.
+
+### `Use this template` 저장소
+
+`Use this template`로 만든 저장소는 원본과 공통 Git 이력이 없으므로 `Sync fork`를 사용할 수 없습니다. 지속적인 업데이트가 중요하다면 원본을 실제로 Fork한 새 저장소를 만든 뒤 `content`, `.env.production`, `static/uploads`와 필요한 사용자 코드를 옮기는 방법이 가장 안전합니다.
+
+기존 template 저장소를 유지해야 한다면 원본을 remote로 등록하고 필요한 변경 커밋을 선택적으로 가져올 수 있습니다.
+
+```sh
+git remote add upstream https://github.com/ORIGINAL_OWNER/ORIGINAL_REPOSITORY.git
+git fetch upstream
+git log --oneline upstream/main
+git cherry-pick <commit-sha>
+```
+
+여러 원본 커밋을 한꺼번에 병합하는 `--allow-unrelated-histories` 방식은 최초 병합 시 동일 파일도 충돌할 수 있으므로 권장하지 않습니다.
+
 ## Pages CMS setup
 
 1. [Pages CMS](https://pagescms.org)에 GitHub 계정으로 로그인합니다.
@@ -130,7 +186,7 @@ SITE_BASE_PATH=blog bun run build
 
 ## Site configuration
 
-템플릿을 배포할 때 바뀌어야 하는 공개 설정은 `.env.production`에서 관리합니다. `src/content/site.json`은 값이 비어 있거나 로컬에서 env를 로드하지 않을 때 쓰는 fallback입니다.
+템플릿을 배포할 때 바뀌어야 하는 공개 설정은 `.env.production`에서 관리합니다. `content/site.json`은 값이 비어 있거나 로컬에서 env를 로드하지 않을 때 쓰는 fallback입니다.
 
 ```sh
 PUBLIC_SITE_TITLE="My Blog"
@@ -144,20 +200,20 @@ PUBLIC_SOCIAL_X_URL=https://x.com/your-handle
 PUBLIC_SOCIAL_GITHUB_URL=https://github.com/your-name
 ```
 
-`PUBLIC_SITE_TAGLINE`, `PUBLIC_SITE_DESCRIPTION`, `PUBLIC_SITE_FOOTER`는 원문 값만 둡니다. 배포할 때 `PUBLIC_TRANSLATION_LOCALES`에 등록된 언어별 문구가 `src/content/translations/<locale>/site.json`으로 자동 생성됩니다. locale suffix가 붙은 `PUBLIC_SITE_DESCRIPTION_EN` 같은 환경변수는 사용하지 않습니다.
+`PUBLIC_SITE_TAGLINE`, `PUBLIC_SITE_DESCRIPTION`, `PUBLIC_SITE_FOOTER`는 원문 값만 둡니다. 배포할 때 `PUBLIC_TRANSLATION_LOCALES`에 등록된 언어별 문구가 `content/translations/<locale>/site.json`으로 자동 생성됩니다. locale suffix가 붙은 `PUBLIC_SITE_DESCRIPTION_EN` 같은 환경변수는 사용하지 않습니다.
 
 `PUBLIC_SITE_AUTHOR`도 같은 값으로 인식됩니다. 둘 다 있으면 `PUBLIC_SITE_AUTHOR`가 우선합니다.
 
 ## Translation workflow
 
-1. Pages CMS에서 원문을 `src/content/posts/*.md`에 저장합니다.
+1. Pages CMS에서 원문을 `content/posts/*.md`에 저장합니다.
 2. GitHub Actions가 `bun run translate:content`를 실행합니다.
 3. `.env.production`의 `PUBLIC_TRANSLATION_LOCALES`에 등록된 각 언어별로 번역본이 없거나 원문 해시가 바뀌었거나 번역 스키마 버전이 달라진 경우에만 DeepL을 호출합니다.
-4. 사이트 문구인 `PUBLIC_SITE_TAGLINE`, `PUBLIC_SITE_DESCRIPTION`, `PUBLIC_SITE_FOOTER`도 같은 방식으로 번역되어 `src/content/translations/<locale>/site.json`에 저장됩니다. 문구마다 원문 언어가 다를 수 있으므로 사이트 문구는 DeepL의 언어 자동 감지를 사용합니다.
+4. 사이트 문구인 `PUBLIC_SITE_TAGLINE`, `PUBLIC_SITE_DESCRIPTION`, `PUBLIC_SITE_FOOTER`도 같은 방식으로 번역되어 `content/translations/<locale>/site.json`에 저장됩니다. 문구마다 원문 언어가 다를 수 있으므로 사이트 문구는 DeepL의 언어 자동 감지를 사용합니다.
 5. 본문 Markdown은 구조화 XML로 변환해 `tag_handling=xml`, `tag_handling_version=v2`, `ignore_tags` 기반으로 번역하므로 헤딩, 리스트, 코드블록 보존이 더 안정적입니다.
 6. frontmatter `date`는 DeepL에 보내지지 않고 원문 값을 그대로 복사하므로 게시 시각까지 유지됩니다.
 7. DeepL 요청에는 마크다운 구조와 frontmatter 의미를 보존하라는 custom instruction도 포함됩니다.
-8. 생성된 번역 파일은 `src/content/translations/<locale>` 아래에 커밋됩니다.
+8. 생성된 번역 파일은 `content/translations/<locale>` 아래에 커밋됩니다.
 9. 같은 워크플로에서 정적 빌드와 Pagefind 인덱싱이 이어서 실행됩니다.
 
 번역 언어는 공개 env로 관리합니다. 아래 예시는 한국어 원문을 영어, 중국어 간체, 일본어, 아랍어로 번역합니다.
@@ -182,7 +238,7 @@ DeepL 언어 코드는 기본 매핑을 사용합니다. 필요하면 `DEEPL_SOU
 
 - `main`에 반영된 포스트 파일마다 GitHub 태그 규칙에 맞게 정규화한 `post-...` 태그로 GitHub Release가 생성되거나 갱신됩니다. 공백, `.`, 한글처럼 태그에 바로 쓸 수 없는 문자가 있으면 안전한 slug와 짧은 해시 조합으로 바뀝니다.
 - 기본값은 원문을 Release 본문으로 사용합니다.
-- 공개 env 값 `PUBLIC_RELEASE_USE_TRANSLATIONS=true`가 설정되어 있으면 `PUBLIC_RELEASE_LOCALE`에 대응되는 `src/content/translations/<locale>/posts/*.md`가 있을 때 해당 번역본으로 Release 본문과 제목을 갱신합니다.
+- 공개 env 값 `PUBLIC_RELEASE_USE_TRANSLATIONS=true`가 설정되어 있으면 `PUBLIC_RELEASE_LOCALE`에 대응되는 `content/translations/<locale>/posts/*.md`가 있을 때 해당 번역본으로 Release 본문과 제목을 갱신합니다.
 - 번역본이 없으면 번역 릴리스 모드에서도 자동으로 원문으로 fallback 합니다.
 
 브라우저 첫 접속 시 기본 로케일은 다음 규칙으로 결정됩니다.

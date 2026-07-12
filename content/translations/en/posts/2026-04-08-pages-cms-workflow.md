@@ -7,8 +7,8 @@ date: '2026-04-07'
 published: true
 category: Essays
 locale: en
-sourcePath: src/content/posts/2026-04-08-pages-cms-workflow.md
-sourceHash: 6f627dcf99f78732704680f0a339a24832165bbb8de899ba0e20be971be92dc6
+sourcePath: content/posts/2026-04-08-pages-cms-workflow.md
+sourceHash: d76b4e4be8db4767d172bbdc1f2fee694a8104883cfaec1f95b2ae7ce2c42873
 translationSchemaVersion: markdown-xml-v2
 translationSource: deepl
 translatedAt: '2026-04-10T02:16:29.921Z'
@@ -19,11 +19,11 @@ In this project, the root file ``.pages.yml`` connects the following two element
 
 ## 1. Post Collection
 
-By registering the `src/content/posts` folder as a collection, you can create new posts and edit existing ones. Fields such as `title`, `description`, `date`, `cover`, `body`, and similar fields are handled in the UI; when saved, the actual Markdown files are committed.
+By registering the `content/posts` folder as a collection, you can create new posts and edit existing ones. Fields such as `title`, `description`, `date`, `cover`, `body`, and similar fields are handled in the UI; when saved, the actual Markdown files are committed.
 
 ## 2. Site Configuration File
 
-By linking `src/content/site.json` to a separate text editor, you can edit meta information such as the blog name, description, and URL within the CMS.
+By linking `content/site.json` to a separate text editor, you can edit meta information such as the blog name, description, and URL within the CMS.
 
 ## Image Upload
 

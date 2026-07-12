@@ -7,8 +7,8 @@ import matter from 'gray-matter';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, '..');
-const sourceDir = path.join(projectRoot, 'src/content/posts');
-const sourceSiteFile = path.join(projectRoot, 'src/content/site.json');
+const sourceDir = path.join(projectRoot, 'content/posts');
+const sourceSiteFile = path.join(projectRoot, 'content/site.json');
 
 const loadEnvFile = (filePath) => {
 	if (!existsSync(filePath)) {
@@ -947,14 +947,9 @@ let skippedCount = 0;
 let skippedSiteCount = 0;
 
 for (const targetLocale of targetLocales) {
-	const targetDir = path.join(projectRoot, 'src/content/translations', targetLocale, 'posts');
+	const targetDir = path.join(projectRoot, 'content/translations', targetLocale, 'posts');
 	await mkdir(targetDir, { recursive: true });
-	const siteTargetFile = path.join(
-		projectRoot,
-		'src/content/translations',
-		targetLocale,
-		'site.json'
-	);
+	const siteTargetFile = path.join(projectRoot, 'content/translations', targetLocale, 'site.json');
 	const siteTargetState = await inferSiteTranslationState(siteTargetFile);
 	const isSiteTranslationCurrent =
 		siteTargetState.sourceHash === sourceSiteHash &&

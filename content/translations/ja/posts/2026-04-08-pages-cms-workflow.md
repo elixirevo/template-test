@@ -5,8 +5,8 @@ date: '2026-04-07'
 published: true
 category: Essays
 locale: ja
-sourcePath: src/content/posts/2026-04-08-pages-cms-workflow.md
-sourceHash: 6f627dcf99f78732704680f0a339a24832165bbb8de899ba0e20be971be92dc6
+sourcePath: content/posts/2026-04-08-pages-cms-workflow.md
+sourceHash: d76b4e4be8db4767d172bbdc1f2fee694a8104883cfaec1f95b2ae7ce2c42873
 sourceLocale: ko
 translationSchemaVersion: markdown-xml-v2
 translationSource: deepl
@@ -18,11 +18,11 @@ Pages CMSは、別途データベースを使用せず、**GitHubリポジトリ
 
 ## 1. 投稿コレクション
 
-`src/content/posts`フォルダをコレクションとして登録することで、新しい記事を作成したり、既存の記事を編集したりできます。 `title`、`description`、`date`、 `cover`、`body` などのフィールドを UI で操作し、保存すると実際の Markdown ファイルがコミットされます。
+`content/posts`フォルダをコレクションとして登録することで、新しい記事を作成したり、既存の記事を編集したりできます。 `title`、`description`、`date`、 `cover`、`body` などのフィールドを UI で操作し、保存すると実際の Markdown ファイルがコミットされます。
 
 ## 2. サイト設定ファイル
 
-`src/content/site.json`を別のファイルエディタで開くことで、ブログ名、説明、URLなどのメタ情報をCMSから修正できます。
+`content/site.json`を別のファイルエディタで開くことで、ブログ名、説明、URLなどのメタ情報をCMSから修正できます。
 
 ## 画像のアップロード
 

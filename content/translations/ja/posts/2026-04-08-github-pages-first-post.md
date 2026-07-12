@@ -5,8 +5,8 @@ date: '2026-04-08'
 published: true
 category: Technical
 locale: ja
-sourcePath: src/content/posts/2026-04-08-github-pages-first-post.md
-sourceHash: fb7606d5741efc2a33de6fb86862ddc67b1e5da54407d042d984ac231709c55a
+sourcePath: content/posts/2026-04-08-github-pages-first-post.md
+sourceHash: 13da3407bc18e15eef6a787995d4828330b034ad9dd2a08ecee5a46c38285ef9
 sourceLocale: ko
 translationSchemaVersion: markdown-xml-v2
 translationSource: deepl
@@ -31,7 +31,7 @@ GitHub Pagesでは、`/blog/post/`のようなディレクトリベースのURL�
 
 ## コンテンツはどこにあるのか
 
-投稿は `src/content/posts` に Markdown ファイルとして保存されます。 各ファイルはフロントマターと本文で構成され、ビルド時に一覧ページと詳細ページが生成されます。
+投稿は `content/posts` に Markdown ファイルとして保存されます。 各ファイルはフロントマターと本文で構成され、ビルド時に一覧ページと詳細ページが生成されます。
 
 ## 次のステップ
 

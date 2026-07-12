@@ -8,7 +8,7 @@ content:
   - name: posts
     label: Posts
     type: collection
-    path: src/content/posts
+    path: content/posts
     filename:
       template: '{year}-{month}-{day}-{title}.md'
       field: create
@@ -69,7 +69,7 @@ content:
   - name: categories
     label: Categories
     type: collection
-    path: src/content/categories
+    path: content/categories
     filename:
       template: '{title}.md'
       field: create
@@ -88,7 +88,7 @@ content:
   - name: tags
     label: Tags
     type: collection
-    path: src/content/tags
+    path: content/tags
     filename:
       template: '{title}.md'
       field: create
@@ -107,7 +107,7 @@ content:
   - name: site
     label: Site settings
     type: file
-    path: src/content/site.json
+    path: content/site.json
     fields:
       - name: title
         label: Site title

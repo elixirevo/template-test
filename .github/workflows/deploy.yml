@@ -48,9 +48,9 @@ jobs:
           if [ "${GITHUB_EVENT_NAME}" != "push" ]; then
             files=""
           elif [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
-            files=$(git diff --diff-filter=ACMRT --name-only "${{ github.event.before }}" "${GITHUB_SHA}" -- 'src/content/posts/*.md')
+            files=$(git diff --diff-filter=ACMRT --name-only "${{ github.event.before }}" "${GITHUB_SHA}" -- 'content/posts/*.md')
           else
-            files=$(git diff-tree --diff-filter=ACMRT --no-commit-id --name-only -r "${GITHUB_SHA}" -- 'src/content/posts/*.md')
+            files=$(git diff-tree --diff-filter=ACMRT --no-commit-id --name-only -r "${GITHUB_SHA}" -- 'content/posts/*.md')
           fi
 
           {
@@ -81,14 +81,14 @@ jobs:
 
       - name: Commit translated content
         run: |
-          if [ -z "$(git status --porcelain -- src/content/translations)" ]; then
+          if [ -z "$(git status --porcelain -- content/translations)" ]; then
             echo "No translated content changes to commit"
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/content/translations
+          git add content/translations
           git commit -m "chore(i18n): sync translations [skip ci]"
           git push origin HEAD:${GITHUB_REF_NAME}
 

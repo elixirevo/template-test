@@ -1,5 +1,5 @@
 import { env as publicEnv } from '$env/dynamic/public';
-import site from '../content/site.json';
+import site from '../../content/site.json';
 import { getLanguageTag, normalizeLocale, sourceLocale, type Locale } from '$lib/locales';
 
 type SocialLink = {
@@ -76,7 +76,7 @@ const sourceSiteCopy = {
 
 type LocalizedSiteCopy = typeof sourceSiteCopy;
 
-const localizedSiteCopyFiles = import.meta.glob('/src/content/translations/*/site.json', {
+const localizedSiteCopyFiles = import.meta.glob('/content/translations/*/site.json', {
 	eager: true,
 	import: 'default',
 	query: '?raw'
@@ -85,7 +85,7 @@ const localizedSiteCopyFiles = import.meta.glob('/src/content/translations/*/sit
 const localizedSiteCopies = new Map<Locale, LocalizedSiteCopy>();
 
 for (const [filePath, raw] of Object.entries(localizedSiteCopyFiles)) {
-	const localeMatch = filePath.match(/\/src\/content\/translations\/([^/]+)\/site\.json$/);
+	const localeMatch = filePath.match(/\/content\/translations\/([^/]+)\/site\.json$/);
 	if (!localeMatch) {
 		continue;
 	}

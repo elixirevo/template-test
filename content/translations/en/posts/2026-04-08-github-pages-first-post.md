@@ -7,8 +7,8 @@ date: '2026-04-08'
 published: true
 category: Technical
 locale: en
-sourcePath: src/content/posts/2026-04-08-github-pages-first-post.md
-sourceHash: fb7606d5741efc2a33de6fb86862ddc67b1e5da54407d042d984ac231709c55a
+sourcePath: content/posts/2026-04-08-github-pages-first-post.md
+sourceHash: 13da3407bc18e15eef6a787995d4828330b034ad9dd2a08ecee5a46c38285ef9
 translationSchemaVersion: markdown-xml-v2
 translationSource: deepl
 translatedAt: '2026-04-10T02:16:28.729Z'
@@ -32,7 +32,7 @@ On GitHub Pages, directory-based URLs like `/blog/post/` are easier to manage. I
 
 ## Where is the content?
 
-Posts are stored as Markdown files in `src/content/posts`. Each file consists of frontmatter and body text, and list pages and detail pages are generated during the build process.
+Posts are stored as Markdown files in `content/posts`. Each file consists of frontmatter and body text, and list pages and detail pages are generated during the build process.
 
 ## Next Steps
 

@@ -7,7 +7,7 @@ import matter from 'gray-matter';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, '..');
-const sourceDir = path.join(projectRoot, 'src/content/posts');
+const sourceDir = path.join(projectRoot, 'content/posts');
 const githubApiUrl = 'https://api.github.com/graphql';
 
 const loadEnvFile = (filePath) => {
@@ -175,7 +175,7 @@ const readEnglishTranslation = async (slug) => {
 
 	const translationFile = path.join(
 		projectRoot,
-		'src/content/translations',
+		'content/translations',
 		englishTranslationLocale,
 		'posts',
 		`${slug}.md`

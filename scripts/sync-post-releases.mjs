@@ -7,7 +7,7 @@ import matter from 'gray-matter';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, '..');
-const siteConfigPath = path.join(projectRoot, 'src/content/site.json');
+const siteConfigPath = path.join(projectRoot, 'content/site.json');
 const githubApiBaseUrl = 'https://api.github.com';
 
 const loadEnvFile = (filePath) => {
@@ -60,7 +60,7 @@ const releaseLocale = normalizeLocale(
 		process.env.PUBLIC_TRANSLATION_LOCALES || process.env.PUBLIC_TRANSLATION_LOCALE
 	)[0] ?? 'en'
 );
-const translationDir = path.join(projectRoot, 'src/content/translations', releaseLocale, 'posts');
+const translationDir = path.join(projectRoot, 'content/translations', releaseLocale, 'posts');
 
 const repoFullName = process.env.GITHUB_REPOSITORY?.trim() ?? '';
 const githubToken = process.env.GITHUB_TOKEN?.trim() ?? '';
