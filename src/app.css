@@ -61,7 +61,7 @@ html.dark {
 	--code-meta: #ff9ec0;
 	--selection-bg: rgba(69, 85, 93, 0.3);
 	--selection-text: #ffffff;
-	--bg-gradient: radial-gradient(circle at top right, #1a1c1c 0%, transparent 60%);
+	--bg-gradient: none;
 	--nav-bg: rgba(12, 15, 15, 0.8);
 	--footer-bg: #0c0f0f;
 }
