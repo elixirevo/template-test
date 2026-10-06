@@ -230,7 +230,9 @@ git cherry-pick <commit-sha>
 
 ## 사이트 설정
 
-템플릿을 배포할 때 바뀌어야 하는 공개 설정은 `.env.production`에서 관리합니다. `content/site.json`은 값이 비어 있거나 로컬에서 env를 로드하지 않을 때 쓰는 fallback입니다.
+공통 공개 사이트 설정은 `.env.production`에서 관리합니다. `bun run dev`와 `bun run build` 모두 이 파일의 `PUBLIC_` 값을 읽으므로 사이트 이름, 언어, 소셜 링크에 같은 기본 설정을 사용합니다. 개발 서버는 Vite 개발 모드를 그대로 유지하며, 공통 로더는 비공개 운영 환경변수를 개발 환경으로 가져오지 않습니다. `content/site.json`은 설정값이 없거나 비어 있을 때 사이트 문구의 기본값으로 사용됩니다.
+
+명시적으로 지정한 실행 환경변수, 현재 모드의 일반 env 설정, 운영 공개 설정 순서로 우선 적용합니다. 예를 들어 `.env.development.local`에서 개발용 공개 설정을 덮어쓸 수 있습니다. env 파일을 변경하면 개발 서버를 다시 시작하세요. `bun run preview`는 마지막 `build/` 결과를 제공하므로 설정이나 코드를 수정한 뒤에는 `bun run build`를 다시 실행해야 합니다.
 
 ```sh
 PUBLIC_SITE_TITLE="My Blog"
@@ -332,3 +334,7 @@ bun run build
 사이트의 다크모드 토글은 Giscus iframe 테마와 자동으로 동기화됩니다.
 
 배포 워크플로는 `post:<slug>`를 giscus `specific` mapping term으로 쓰고, `scripts/sync-giscus-discussions.mjs`로 원문 포스트별 Discussion을 미리 생성합니다. 이렇게 하면 번역 경로(`/en`, `/ja`, `/ar` 등)가 모두 같은 댓글 thread를 공유하고, 첫 댓글/반응 시점에 Discussion이 뒤늦게 생성되어 iframe을 새로고침해야 하는 상황을 피할 수 있습니다. Discussion 제목, 본문, Canonical URL은 원문이 영어이면 원문 영어를 쓰고, 원문이 영어가 아니면서 영어 번역 파일이 있으면 영어 번역 경로를 쓰며, 영어 번역이 없으면 원문을 사용합니다.
+
+## 디자인·콘텐츠·추가 기능 보존
+
+디자인은 `src/lib/theme`, 사용자 기능은 `src/lib/extensions`, 공식 동작은 `src/lib/template`에서 관리합니다. `bun run update:check`는 콘텐츠를 생성·번역하지 않고 검사와 빌드를 실행하며 보호 파일의 변경 여부를 확인합니다. `bun run test:template`은 임시 복사본에서 사용자 스타일과 확장 연결을 검증합니다. 자세한 규약과 기존 사용자 코드 이전 절차는 [커스터마이징 가이드](../customization.md)를 참고하세요.

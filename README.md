@@ -266,7 +266,9 @@ Current CMS rules:
 
 ## Site configuration
 
-Public values that differ per deployment live in `.env.production`. `content/site.json` is the fallback when an environment value is empty or local tooling does not load the env file.
+Shared public site settings live in `.env.production`. Both `bun run dev` and `bun run build` load its `PUBLIC_` values, so the site title, languages, and social links use the same defaults. Development still runs in Vite's development mode; private production variables are not imported into development by this shared loader. `content/site.json` supplies fallback site copy when a value is missing or empty.
+
+Explicit process environment values take priority, followed by the current mode's normal env settings, then production public settings. For example, `.env.development.local` can override public settings for local development. Restart the dev server after changing env files. `bun run preview` serves the last `build/` output; run `bun run build` again to preview configuration or code changes.
 
 ```sh
 PUBLIC_SITE_TITLE="My Blog"
@@ -366,3 +368,7 @@ Setup:
 The site theme toggle synchronizes automatically with the Giscus iframe theme.
 
 The deployment workflow uses `post:<slug>` as the Giscus `specific` mapping term and pre-creates one Discussion per source post with `scripts/sync-giscus-discussions.mjs`. Every localized route shares that thread. Discussion metadata prefers the English source or English translation when available and otherwise falls back to the source post.
+
+## Customization and update preservation
+
+Theme files live in `src/lib/theme`, user extensions in `src/lib/extensions`, and shared behavior in `src/lib/template`. Run `bun run update:check` for a build that verifies protected source files remain unchanged. Run `bun run test:template` to exercise custom CSS and extension points in a temporary copy. See [the customization guide](docs/customization.md) for contracts, ownership, and migration limits.

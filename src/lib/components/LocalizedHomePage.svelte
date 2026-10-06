@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
-	import PostFilters from '$lib/components/PostFilters.svelte';
+	import HomeView from '$lib/theme/HomeView.svelte';
 	import SeoLinks from '$lib/components/SeoLinks.svelte';
 	import { type Locale, type UiCopy } from '$lib/i18n';
 	import { getConfiguredLocales } from '$lib/locales';
@@ -95,46 +94,22 @@
 
 <SeoLinks {canonicalUrl} {alternateLinks} {xDefaultUrl} />
 
-<div class="container-small">
-	<PostFilters
-		{categories}
-		{tags}
-		{selectedCategory}
-		{activeTag}
-		onCategorySelect={(category) => {
-			activeCategory = category;
-		}}
-		onTagToggle={(tag) => {
-			activeTag = activeTag === tag ? null : tag;
-		}}
-	/>
-
-	<section class="post-list" aria-label="Recent posts">
-		{#if filteredPosts.length > 0}
-			{#each filteredPosts as post (post.slug)}
-				<article class="post-item">
-					<time class="post-date font-label" datetime={post.date}>
-						{post.formattedDate}
-					</time>
-					<h2 class="post-title font-body">
-						<a href={resolve(toPostPath(locale, post.slug) as `/blog/${string}`)}>{post.title}</a>
-					</h2>
-				</article>
-			{/each}
-		{:else}
-			<div class="empty-state">
-				<p class="font-label">{ui.home.emptyState}</p>
-				<button
-					type="button"
-					class="font-label"
-					onclick={() => {
-						activeCategory = null;
-						activeTag = null;
-					}}
-				>
-					{ui.home.viewAll}
-				</button>
-			</div>
-		{/if}
-	</section>
-</div>
+<HomeView
+	{locale}
+	{ui}
+	{categories}
+	{tags}
+	{selectedCategory}
+	{activeTag}
+	{filteredPosts}
+	onCategorySelect={(category) => {
+		activeCategory = category;
+	}}
+	onTagToggle={(tag) => {
+		activeTag = activeTag === tag ? null : tag;
+	}}
+	onReset={() => {
+		activeCategory = null;
+		activeTag = null;
+	}}
+/>
